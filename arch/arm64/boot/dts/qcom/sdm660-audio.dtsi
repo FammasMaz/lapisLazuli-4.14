@@ -12,7 +12,6 @@
  */
 
 #include "sdm660-wsa881x.dtsi"
-#include "sdm660-lpi.dtsi"
 
 &audio_apr {
 	q6core: qcom,q6core-audio {
@@ -20,7 +19,123 @@
 	};
 };
 
+#include "sdm660-lpi.dtsi"
+
 &q6core {
+	us_euro_gpio: msm_cdc_pinctrl@75 {
+		compatible = "qcom,msm-cdc-pinctrl";
+		pinctrl-names = "aud_active", "aud_sleep";
+		pinctrl-0 = <&wcd_gnd_mic_swap_active>;
+		pinctrl-1 = <&wcd_gnd_mic_swap_idle>;
+	};
+
+	clock_audio: audio_ext_clk {
+		compatible = "qcom,audio-ref-clk";
+		qcom,codec-ext-clk-src = <10>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pmi_clk_default>;
+		qcom,audio-ref-clk-gpio = <&pm660_gpios 3 0>;
+		clock-names = "osr_clk";
+		clocks = <&clock_rpmcc RPM_SMD_DIV_CLK1>;
+		qcom,node_has_rpm_clock;
+		#clock-cells = <1>;
+	};
+
+	clock_audio_native: audio_ext_clk_native {
+		compatible = "qcom,audio-ref-clk";
+		qcom,codec-ext-clk-src = <2>;
+		qcom,use-pinctrl = <1>;
+		clock-names = "osr_clk";
+		#clock-cells = <1>;
+		qcom,codec-mclk-clk-freq = <11289600>;
+		qcom,mclk-clk-reg = <0x15020018 0x0>;
+		pinctrl-names = "sleep", "active";
+		pinctrl-0 = <&lpi_mclk0_sleep>;
+		pinctrl-1 = <&lpi_mclk0_active>;
+	};
+
+	clock_audio_lnbb: audio_ext_clk_lnbb {
+		compatible = "qcom,audio-ref-clk";
+		qcom,codec-ext-clk-src = <1>;
+		clock-names = "osr_clk";
+		clocks = <&clock_rpmcc RPM_SMD_LN_BB_CLK2>;
+		qcom,node_has_rpm_clock;
+		#clock-cells = <1>;
+	};
+
+	wcd_rst_gpio: msm_cdc_pinctrl@64 {
+		compatible = "qcom,msm-cdc-pinctrl";
+		pinctrl-names = "aud_active", "aud_sleep";
+		pinctrl-0 = <&lpi_cdc_reset_active>;
+		pinctrl-1 = <&lpi_cdc_reset_sleep>;
+		qcom,lpi-gpios;
+	};
+
+	cdc_pdm_gpios: cdc_pdm_pinctrl {
+		compatible = "qcom,msm-cdc-pinctrl";
+		pinctrl-names = "aud_active", "aud_sleep";
+		pinctrl-0 = <&cdc_pdm_gpios_active &cdc_pdm_2_gpios_active>;
+		pinctrl-1 = <&cdc_pdm_gpios_sleep &cdc_pdm_2_gpios_sleep>;
+		qcom,lpi-gpios;
+	};
+
+	cdc_comp_gpios: cdc_comp_pinctrl {
+		compatible = "qcom,msm-cdc-pinctrl";
+		pinctrl-names = "aud_active", "aud_sleep";
+		pinctrl-0 = <&cdc_comp_gpios_active>;
+		pinctrl-1 = <&cdc_comp_gpios_sleep>;
+		qcom,lpi-gpios;
+	};
+
+	cdc_dmic_gpios: cdc_dmic_pinctrl {
+		compatible = "qcom,msm-cdc-pinctrl";
+		pinctrl-names = "aud_active", "aud_sleep";
+		pinctrl-0 = <&cdc_dmic12_gpios_active
+				&cdc_dmic34_gpios_active>;
+		pinctrl-1 = <&cdc_dmic12_gpios_sleep
+				&cdc_dmic34_gpios_sleep>;
+		qcom,lpi-gpios;
+	};
+
+	msm_sdw_codec: msm-sdw-codec@152c1000 {
+		status = "disabled";
+		compatible = "qcom,msm-sdw-codec";
+		reg = <0x152c1000 0x0>;
+		interrupts = <0 161 0>;
+		interrupt-names = "swr_master_irq";
+		qcom,cdc-sdw-gpios = <&cdc_sdw_gpios>;
+
+		swr_master {
+			compatible = "qcom,swr-wcd";
+			#address-cells = <2>;
+			#size-cells = <0>;
+
+			wsa881x_211_en: wsa881x_en@20170211 {
+				compatible = "qcom,wsa881x";
+				reg = <0x0 0x20170211>;
+				qcom,spkr-sd-n-node = <&wsa_spkr_en1>;
+			};
+
+			wsa881x_212_en: wsa881x_en@20170212 {
+				compatible = "qcom,wsa881x";
+				reg = <0x0 0x20170212>;
+				qcom,spkr-sd-n-node = <&wsa_spkr_en2>;
+			};
+
+			wsa881x_213_en: wsa881x_en@21170213 {
+				compatible = "qcom,wsa881x";
+				reg = <0x0 0x21170213>;
+				qcom,spkr-sd-n-node = <&wsa_spkr_en1>;
+			};
+
+			wsa881x_214_en: wsa881x_en@21170214 {
+				compatible = "qcom,wsa881x";
+				reg = <0x0 0x21170214>;
+				qcom,spkr-sd-n-node = <&wsa_spkr_en2>;
+			};
+		};
+	};
+
 	int_codec: sound {
 		status = "disabled";
 		compatible = "qcom,sdm660-asoc-snd";
@@ -523,32 +638,6 @@
 };
 
 &soc {
-	cdc_pdm_gpios: cdc_pdm_pinctrl {
-		compatible = "qcom,msm-cdc-pinctrl";
-		pinctrl-names = "aud_active", "aud_sleep";
-		pinctrl-0 = <&cdc_pdm_gpios_active &cdc_pdm_2_gpios_active>;
-		pinctrl-1 = <&cdc_pdm_gpios_sleep &cdc_pdm_2_gpios_sleep>;
-		qcom,lpi-gpios;
-	};
-
-	cdc_comp_gpios: cdc_comp_pinctrl {
-		compatible = "qcom,msm-cdc-pinctrl";
-		pinctrl-names = "aud_active", "aud_sleep";
-		pinctrl-0 = <&cdc_comp_gpios_active>;
-		pinctrl-1 = <&cdc_comp_gpios_sleep>;
-		qcom,lpi-gpios;
-	};
-
-	cdc_dmic_gpios: cdc_dmic_pinctrl {
-		compatible = "qcom,msm-cdc-pinctrl";
-		pinctrl-names = "aud_active", "aud_sleep";
-		pinctrl-0 = <&cdc_dmic12_gpios_active
-				&cdc_dmic34_gpios_active>;
-		pinctrl-1 = <&cdc_dmic12_gpios_sleep
-				&cdc_dmic34_gpios_sleep>;
-		qcom,lpi-gpios;
-	};
-
 	cdc_sdw_gpios: sdw_clk_data_pinctrl {
 	      compatible = "qcom,msm-cdc-pinctrl";
 	      pinctrl-names = "aud_active", "aud_sleep";
@@ -568,44 +657,5 @@
 	      pinctrl-names = "aud_active", "aud_sleep";
 	      pinctrl-0 = <&spkr_2_sd_n_active>;
 	      pinctrl-1 = <&spkr_2_sd_n_sleep>;
-	};
-
-	msm_sdw_codec: msm-sdw-codec@152c1000 {
-		status = "disabled";
-		compatible = "qcom,msm-sdw-codec";
-		reg = <0x152c1000 0x0>;
-		interrupts = <0 161 0>;
-		interrupt-names = "swr_master_irq";
-		qcom,cdc-sdw-gpios = <&cdc_sdw_gpios>;
-
-		swr_master {
-			compatible = "qcom,swr-wcd";
-			#address-cells = <2>;
-			#size-cells = <0>;
-
-			wsa881x_211_en: wsa881x_en@20170211 {
-				compatible = "qcom,wsa881x";
-				reg = <0x0 0x20170211>;
-				qcom,spkr-sd-n-node = <&wsa_spkr_en1>;
-			};
-
-			wsa881x_212_en: wsa881x_en@20170212 {
-				compatible = "qcom,wsa881x";
-				reg = <0x0 0x20170212>;
-				qcom,spkr-sd-n-node = <&wsa_spkr_en2>;
-			};
-
-			wsa881x_213_en: wsa881x_en@21170213 {
-				compatible = "qcom,wsa881x";
-				reg = <0x0 0x21170213>;
-				qcom,spkr-sd-n-node = <&wsa_spkr_en1>;
-			};
-
-			wsa881x_214_en: wsa881x_en@21170214 {
-				compatible = "qcom,wsa881x";
-				reg = <0x0 0x21170214>;
-				qcom,spkr-sd-n-node = <&wsa_spkr_en2>;
-			};
-		};
 	};
 };
