@@ -303,7 +303,7 @@ static void wcd_mbhc_update_fsm_source(struct wcd_mbhc *mbhc,
 	};
 }
 
-static void wcd_enable_mbhc_supply(struct wcd_mbhc *mbhc,
+void wcd_enable_mbhc_supply(struct wcd_mbhc *mbhc,
 			enum wcd_mbhc_plug_type plug_type)
 {
 
@@ -956,7 +956,7 @@ static irqreturn_t wcd_mbhc_hs_rem_irq(int irq, void *data)
 			 */
 				pr_debug("%s: Maybe headset plug in,r1=%d,r2=%d\n",
 						__func__, mbhc->zr, mbhc->zl);
-				if (((mbhc->zl < 64) && (mbhc->zr < 64)) || 
+				if (((mbhc->zl < 64) && (mbhc->zr < 64)) ||
 				    ((mbhc->zl < 64) && (mbhc->zr > 20000)))
 					goto exit;
 				else
