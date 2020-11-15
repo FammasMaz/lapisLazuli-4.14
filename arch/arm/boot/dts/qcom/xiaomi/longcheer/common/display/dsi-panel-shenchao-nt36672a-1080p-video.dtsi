@@ -98,6 +98,7 @@
 				15 01 00 00 14 00 02 28 00
 				15 01 00 00 78 00 02 10 00
 				];
+<<<<<<< HEAD
 		qcom,mdss-dsi-ce-on-command = [
 				];
 		qcom,mdss-dsi-ce-off-command = [
@@ -369,6 +370,10 @@
 		qcom,mdss-dsi-hbm2-on-command-state = "dsi_hs_mode";
 		qcom,mdss-dsi-hbm3-on-command-state = "dsi_hs_mode";
 		qcom,mdss-dsi-hbm-off-command-state = "dsi_hs_mode";
+=======
+		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
+		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
+>>>>>>> ff78c879838e... Revert "dts: longcheer: Add cmd for livedisplay CABC"
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
 		qcom,mdss-dsi-reset-sequence = <1 1>, <0 5>, <1 15>;
 		qcom,mdss-dsi-tx-eot-append;
@@ -381,6 +386,9 @@
 		qcom,mdss-dsi-panel-status-read-length = <1>;
 		qcom,mdss-dsi-panel-status-value = <0x9c>;
 		qcom,mdss-dsi-panel-max-error-count = <3>;
+<<<<<<< HEAD
 
+=======
+>>>>>>> ff78c879838e... Revert "dts: longcheer: Add cmd for livedisplay CABC"
 	};
 };
