@@ -1,23 +1,18 @@
-version: 2.0
-
+version: 2.1
 jobs:
-  info:
-    docker:
-      - image: najahi/oven:proton
-    steps:
-      - run: git clone --depth=1 https://github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME} -b ${CIRCLE_BRANCH} .
-      - run: bash .circleci/info
-
-  build:
-    docker:
-      - image: najahi/oven:proton
-    steps:
-      - run: git clone --depth=1 https://github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME} -b ${CIRCLE_BRANCH} .
-      - run: bash .circleci/build
-
+  compile:
+   docker:
+      - image: z4nyx/docker:latest
+   steps:
+      - run:
+          command: |
+           git config --global user.name "sohamxda7"
+           git config --global user.email "sensoham135@gmail.com"
+           git config --global color.ui false
+           git clone --depth=1 https://github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME} -b ${CIRCLE_BRANCH} .
+           bash .circleci/build.sh
 workflows:
-  version: 2
-  build:
+  version: 2.1
+  cooking:
     jobs:
-      - info
-      - build
+      - compile
