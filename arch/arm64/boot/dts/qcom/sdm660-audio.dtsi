@@ -15,6 +15,8 @@
 
 &audio_apr {
 	q6core: qcom,q6core-audio {
+		#address-cells = <1>;
+		#size-cells = <1>;
 		compatible = "qcom,q6core-audio";
 	};
 };
@@ -24,6 +26,7 @@
 &q6core {
 	us_euro_gpio: msm_cdc_pinctrl@75 {
 		compatible = "qcom,msm-cdc-pinctrl";
+		#gpio-cells = <0>;
 		pinctrl-names = "aud_active", "aud_sleep";
 		pinctrl-0 = <&wcd_gnd_mic_swap_active>;
 		pinctrl-1 = <&wcd_gnd_mic_swap_idle>;
@@ -65,6 +68,7 @@
 
 	wcd_rst_gpio: msm_cdc_pinctrl@64 {
 		compatible = "qcom,msm-cdc-pinctrl";
+		#gpio-cells = <0>;
 		pinctrl-names = "aud_active", "aud_sleep";
 		pinctrl-0 = <&lpi_cdc_reset_active>;
 		pinctrl-1 = <&lpi_cdc_reset_sleep>;
@@ -73,6 +77,7 @@
 
 	cdc_pdm_gpios: cdc_pdm_pinctrl {
 		compatible = "qcom,msm-cdc-pinctrl";
+		#gpio-cells = <0>;
 		pinctrl-names = "aud_active", "aud_sleep";
 		pinctrl-0 = <&cdc_pdm_gpios_active &cdc_pdm_2_gpios_active>;
 		pinctrl-1 = <&cdc_pdm_gpios_sleep &cdc_pdm_2_gpios_sleep>;
@@ -81,6 +86,7 @@
 
 	cdc_comp_gpios: cdc_comp_pinctrl {
 		compatible = "qcom,msm-cdc-pinctrl";
+		#gpio-cells = <0>;
 		pinctrl-names = "aud_active", "aud_sleep";
 		pinctrl-0 = <&cdc_comp_gpios_active>;
 		pinctrl-1 = <&cdc_comp_gpios_sleep>;
@@ -640,6 +646,7 @@
 &soc {
 	cdc_sdw_gpios: sdw_clk_data_pinctrl {
 	      compatible = "qcom,msm-cdc-pinctrl";
+	      #gpio-cells = <0>;
 	      pinctrl-names = "aud_active", "aud_sleep";
 	      pinctrl-0 = <&sdw_clk_active &sdw_data_active>;
 	      pinctrl-1 = <&sdw_clk_sleep &sdw_data_sleep>;
