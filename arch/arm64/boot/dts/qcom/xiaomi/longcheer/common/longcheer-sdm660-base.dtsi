@@ -82,6 +82,7 @@
 	max98927@3a {
 		compatible = "maxim,max98927L";
 		status = "okay";
+    qcom,disable-dma;
 		reg = <0x3a>;
 		mono_stereo_mode = <0>;
 		interleave_mode = <0>;
