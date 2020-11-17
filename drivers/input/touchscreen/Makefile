@@ -112,3 +112,9 @@ obj-$(CONFIG_TOUCHSCREEN_HIMAX_CHIPSET)	+= hxchipset/
 obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_TCM)	+= synaptics_tcm/
 obj-$(CONFIG_TOUCHSCREEN_RAYDIUM_CHIPSET)  += raydium_wt030/
 obj-$(CONFIG_TOUCHSCREEN_COMMON)	+= tp_common.o
+
+obj-$(CONFIG_KERNEL_CUSTOM_F7A)	+= lct_tp_selftest.o
+obj-$(CONFIG_KERNEL_CUSTOM_F7A)	+= lct_tp_info.o
+obj-$(CONFIG_KERNEL_CUSTOM_F7A)	+= lct_tp_work.o
+obj-$(CONFIG_KERNEL_CUSTOM_F7A)	+= lct_tp_gesture.o
+obj-$(CONFIG_KERNEL_CUSTOM_F7A)	+= lct_tp_grip_area.o
