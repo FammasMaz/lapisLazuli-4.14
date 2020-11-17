@@ -1674,7 +1674,7 @@ static int32_t nvt_ts_suspend(struct device *dev)
 	cancel_delayed_work_sync(&nvt_esd_check_work);
 	nvt_esd_check_enable(false);
 #endif /* #if NVT_TOUCH_ESD_PROTECT */
-#If WAKEUP_GESTURE
+#if WAKEUP_GESTURE
 	if (enable_gesture_mode) {
 
 		buf[0] = EVENT_MAP_HOST_CMD;
