@@ -11,7 +11,7 @@ menuconfig INPUT_TOUCHSCREEN
 
 if INPUT_TOUCHSCREEN
 source "drivers/input/touchscreen/nvt_touch_f7a/Kconfig"
-
+source "drivers/input/touchscreen/synaptics_tcm/Kconfig"
 config TOUCHSCREEN_PROPERTIES
 	def_tristate INPUT
 	depends on INPUT
@@ -1307,8 +1307,6 @@ config TOUCHSCREEN_SYNAPTICS_TCM
 	  Say Y here if you have a Synaptics Touchscreen.
 
 	  If unsure, say N.
-
-source "drivers/input/touchscreen/synaptics_tcm/Kconfig"
 
 config TOUCHSCREEN_RAYDIUM_CHIPSET
 	bool "Raydium WT030 touchpanel CHIPSET"
