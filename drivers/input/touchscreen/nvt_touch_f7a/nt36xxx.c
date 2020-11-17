@@ -23,8 +23,9 @@
 #include <linux/irq.h>
 #include <linux/gpio.h>
 #include <linux/proc_fs.h>
-#include <linux/uaccess.h>
+#include <asm/uaccess.h>
 #include <linux/input/mt.h>
+#include <linux/wakelock.h>
 #include <linux/of_gpio.h>
 #include <linux/of_irq.h>
 
@@ -40,18 +41,9 @@
 #include <linux/jiffies.h>
 #endif /* #if NVT_TOUCH_ESD_PROTECT */
 
-#ifdef CONFIG_KERNEL_CUSTOM_FACTORY
-#include "../lct_tp_work.h"
-#endif
-#include "../lct_tp_gesture.h"
-#include "../lct_tp_grip_area.h"
-
 /* add verify LCD by wanghan start */
 extern char g_lcd_id[128];
 /* add verify LCD by wanghan end */
-/* add touchpad information by wanghan start */
-extern int lct_nvt_tp_info_node_init(void);
-/* add touchpad information by wanghan end */
 /* add resume work by wanghan start */
 static struct work_struct g_resume_work;
 /* add resume work by wanghan end */
@@ -91,13 +83,6 @@ static struct workqueue_struct *nvt_fwu_wq;
 extern void Boot_Update_Firmware(struct work_struct *work);
 #endif
 
-#ifdef CONFIG_KERNEL_CUSTOM_FACTORY
-static int lct_tp_work_node_callback(bool flag);
-#endif
-static int lct_tp_gesture_node_callback(bool flag);
-static int lct_tp_get_screen_angle_callback(void);
-static int lct_tp_set_screen_angle_callback(unsigned int angle);
-
 /* add resume work by wanghan start */
 static void do_nvt_ts_resume_work(struct work_struct *work);
 /* add resume work by wanghan end */
@@ -108,7 +93,6 @@ static int fb_notifier_callback(struct notifier_block *self, unsigned long event
 static void nvt_ts_early_suspend(struct early_suspend *h);
 static void nvt_ts_late_resume(struct early_suspend *h);
 #endif
-
 #ifdef CONFIG_TOUCHSCREEN_COMMON
 #include <linux/input/tp_common.h>
 #endif
@@ -183,11 +167,11 @@ static ssize_t double_tap_store(struct kobject *kobj,
                 size_t count)
 {
     int rc, val;
-
+    
     rc = kstrtoint(buf, 10, &val);
     if (rc)
     return -EINVAL;
-
+    
     enable_gesture_mode = !!val;
     return count;
 }
@@ -731,7 +715,7 @@ static int32_t nvt_flash_proc_init(void)
 /* function page definition */
 #define FUNCPAGE_GESTURE         1
 
-static struct wakeup_source gesture_wakeup;
+static struct wake_lock gestrue_wakelock;
 
 /*******************************************************
 Description:
@@ -1183,7 +1167,7 @@ static irqreturn_t nvt_ts_irq_handler(int32_t irq, void *dev_id)
 
 #if WAKEUP_GESTURE
 	if (bTouchIsAwake == 0) {
-		__pm_wakeup_event(&gesture_wakeup, msecs_to_jiffies(5000));
+		wake_lock_timeout(&gestrue_wakelock, msecs_to_jiffies(5000));
 	}
 #endif
 
@@ -1478,7 +1462,7 @@ static int32_t nvt_ts_probe(struct i2c_client *client, const struct i2c_device_i
 	for (retry = 0; retry < (sizeof(gesture_key_array) / sizeof(gesture_key_array[0])); retry++) {
 		input_set_capability(ts->input_dev, EV_KEY, gesture_key_array[retry]);
 	}
-	wakeup_source_init(&gesture_wakeup, "poll-wake-lock");
+	wake_lock_init(&gestrue_wakelock, WAKE_LOCK_SUSPEND, "poll-wake-lock");
 #ifdef CONFIG_TOUCHSCREEN_COMMON
     ret = tp_common_set_double_tap_ops(&double_tap_ops);
     if (ret < 0) {
@@ -1537,29 +1521,6 @@ static int32_t nvt_ts_probe(struct i2c_client *client, const struct i2c_device_i
 	queue_delayed_work(nvt_esd_check_wq, &nvt_esd_check_work,
 			msecs_to_jiffies(NVT_TOUCH_ESD_CHECK_PERIOD));
 #endif /* #if NVT_TOUCH_ESD_PROTECT */
-
-
-
-#ifdef CONFIG_KERNEL_CUSTOM_FACTORY
-	ret = init_lct_tp_work(lct_tp_work_node_callback);
-	if (ret < 0) {
-		NVT_ERR("Failed to add /proc/tp_work node!\n");
-	}
-#endif
-
-	ret = init_lct_tp_gesture(lct_tp_gesture_node_callback);
-	if (ret < 0) {
-		NVT_ERR("Failed to add /proc/tp_work node!\n");
-	}
-
-	ret = init_lct_tp_grip_area(lct_tp_set_screen_angle_callback, lct_tp_get_screen_angle_callback);
-	if (ret < 0) {
-		NVT_ERR("Failed to add /proc/tp_grip_area node!\n");
-	}
-
-	/* add touchpad information by wanghan start */
-	lct_nvt_tp_info_node_init();
-	/* add touchpad information by wanghan end */
 
 #if NVT_TOUCH_PROC
 	ret = nvt_flash_proc_init();
@@ -1714,7 +1675,7 @@ static int32_t nvt_ts_suspend(struct device *dev)
 	cancel_delayed_work_sync(&nvt_esd_check_work);
 	nvt_esd_check_enable(false);
 #endif /* #if NVT_TOUCH_ESD_PROTECT */
-#if WAKEUP_GESTURE
+
 	if (enable_gesture_mode) {
 
 		buf[0] = EVENT_MAP_HOST_CMD;
@@ -1731,16 +1692,14 @@ static int32_t nvt_ts_suspend(struct device *dev)
 
 		NVT_LOG("Enabled touch wakeup gesture\n");
 	} else {
-#endif
 		disable_irq(ts->client->irq);
 
 
 		buf[0] = EVENT_MAP_HOST_CMD;
 		buf[1] = 0x11;
 		CTP_I2C_WRITE(ts->client, I2C_FW_Address, buf, 2);
-#if WAKEUP_GESTURE
 	}
-#endif
+
 	/* release all touches */
 #if MT_PROTOCOL_B
 	for (i = 0; i < ts->max_touch_num; i++) {
@@ -1759,10 +1718,9 @@ static int32_t nvt_ts_suspend(struct device *dev)
 	input_sync(ts->input_dev);
 
 	msleep(50);
-#if WAKEUP_GESTURE
-	suspend_state = true;
-#endif
+
 	mutex_unlock(&ts->lock);
+	suspend_state = true;
 
 	NVT_LOG("end\n");
 
@@ -1795,7 +1753,7 @@ static int32_t nvt_ts_resume(struct device *dev)
 #endif
 	nvt_bootloader_reset();
 	nvt_check_fw_reset_state(RESET_STATE_REK);
-#if WAKEUP_GESTURE
+
 	if (delay_gesture) {
 		enable_gesture_mode = !enable_gesture_mode;
 	}
@@ -1807,9 +1765,6 @@ static int32_t nvt_ts_resume(struct device *dev)
 	if (delay_gesture) {
 		enable_gesture_mode = !enable_gesture_mode;
 	}
-#else
-enable_irq(ts->client->irq);
-#endif
 
 #if NVT_TOUCH_ESD_PROTECT
 	queue_delayed_work(nvt_esd_check_wq, &nvt_esd_check_work,
@@ -1819,10 +1774,9 @@ enable_irq(ts->client->irq);
 	bTouchIsAwake = 1;
 
 	mutex_unlock(&ts->lock);
-#if WAKEUP_GESTURE
 	suspend_state = false;
 	delay_gesture = false;
-#endif
+
 	if (g_nvt.usb_plugin)
 		nvt_ts_usb_plugin_work_func(NULL);
 
@@ -1847,138 +1801,6 @@ static void do_nvt_ts_resume_work(struct work_struct *work)
 }
 /* add resume work by wanghan end */
 
-#ifdef CONFIG_KERNEL_CUSTOM_FACTORY
-static int lct_tp_work_node_callback(bool flag)
-{
-	int ret = 0;
-
-	LOG_ENTRY();
-	if (enable_gesture_mode) {
-		LOGV("ERROR: novatek gesture=%d!\n", enable_gesture_mode);
-		return -1;
-	}
-	if (suspend_state) return 0;
-	if (flag) {
-		suspend_state = true;
-		ret = nvt_ts_resume(&ts->client->dev);
-		if (ret < 0) NVT_ERR("nvt_ts_resume faild! ret=%d\n", ret);
-	} else {
-		ret = nvt_ts_suspend(&ts->client->dev);
-		if (ret < 0) NVT_ERR("nvt_ts_suspend faild! ret=%d\n", ret);
-	}
-	suspend_state = false;
-
-	LOG_DONE();
-	return ret;
-}
-#endif
-
-static int lct_tp_gesture_node_callback(bool flag)
-{
-	int retval = 0;
-
-	LOG_ENTRY();
-	if (suspend_state) {
-		LOGV("ERROR: TP is suspend!\n");
-		return -1;
-	}
-	if(flag) {
-		enable_gesture_mode = true;
-		LOGV("enable gesture mode\n");
-	} else {
-		enable_gesture_mode = false;
-		LOGV("disable gesture mode\n");
-	}
-	LOG_DONE();
-	return retval;
-}
-
-static int lct_tp_get_screen_angle_callback(void)
-{
-	uint8_t tmp[8] = {0};
-	int32_t ret = -EIO;
-	uint8_t edge_reject_switch;
-
-	if ( !bTouchIsAwake || (ts->touch_state != TOUCH_STATE_WORKING) ) {
-		NVT_ERR("tp is suspended or flashing, can not to set\n");
-		return ret;
-	}
-
-	NVT_LOG("++\n");
-
-	mutex_lock(&ts->lock);
-
-	msleep(35);
-
-	tmp[0] = 0xFF;
-	tmp[1] = (ts->mmap->EVENT_BUF_ADDR >> 16) & 0xFF;
-	tmp[2] = (ts->mmap->EVENT_BUF_ADDR >> 8) & 0xFF;
-	ret = CTP_I2C_WRITE(ts->client, I2C_FW_Address, tmp, 3);
-	if (ret < 0) {
-		NVT_ERR("Set event buffer index fail!\n");
-		goto out;
-	}
-
-	tmp[0] = 0x5C;
-	tmp[1] = 0x00;
-	ret = CTP_I2C_READ(ts->client, I2C_FW_Address, tmp, 2);
-	if (ret < 0) {
-		NVT_ERR("Read edge reject switch status fail!\n");
-		goto out;
-	}
-
-	edge_reject_switch = ((tmp[1] >> 5) & 0x03);
-	NVT_LOG("edge_reject_switch = %d\n", edge_reject_switch);
-	ret = edge_reject_switch;
-
-out:
-	mutex_unlock(&ts->lock);
-	NVT_LOG("--\n");
-	return ret;
-}
-static int lct_tp_set_screen_angle_callback(unsigned int angle)
-{
-	uint8_t tmp[3];
-	int ret = -EIO;
-
-	if ( !bTouchIsAwake || (ts->touch_state != TOUCH_STATE_WORKING) ) {
-		NVT_ERR("tp is suspended or flashing, can not to set\n");
-		return ret;
-	}
-
-	NVT_LOG("++\n");
-
-	mutex_lock(&ts->lock);
-
-	tmp[0] = 0XFF;
-	tmp[1] = (ts->mmap->EVENT_BUF_ADDR >> 16) & 0xFF;
-	tmp[2] = (ts->mmap->EVENT_BUF_ADDR >> 8) & 0xFF;
-	ret = CTP_I2C_WRITE(ts->client, I2C_FW_Address, tmp, 3);
-	if (ret < 0) {
-		NVT_LOG("i2c wite error!\n");
-		goto out;
-	}
-	tmp[0] = EVENT_MAP_HOST_CMD;
-	if (angle == 90) {
-		tmp[1] = 0xBC;
-	} else if (angle == 270) {
-		tmp[1] = 0xBB;
-	} else {
-		tmp[1] = 0xBA;
-	}
-	ret = CTP_I2C_WRITE(ts->client, I2C_FW_Address, tmp, 2);
-	if (ret < 0) {
-		NVT_LOG("i2c read error!\n");
-		goto out;
-	}
-	ret = 0;
-
-out:
-	mutex_unlock(&ts->lock);
-	NVT_LOG("--\n");
-	return ret;
-}
-
 #if defined(CONFIG_FB)
 static int fb_notifier_callback(struct notifier_block *self, unsigned long event, void *data)
 {
@@ -1992,12 +1814,6 @@ static int fb_notifier_callback(struct notifier_block *self, unsigned long event
 		blank = evdata->data;
 		if (*blank == FB_BLANK_POWERDOWN) {
 			NVT_LOG("touch suspend\n");
-#ifdef CONFIG_KERNEL_CUSTOM_FACTORY
-			if (!get_lct_tp_work_status()) {
-				suspend_state = true;
-				return 0;
-			}
-#endif
 			flush_work(&g_resume_work);
 			mutex_lock(&ts->pm_mutex);
 			nvt_ts_suspend(&ts->client->dev);
@@ -2007,12 +1823,6 @@ static int fb_notifier_callback(struct notifier_block *self, unsigned long event
 		blank = evdata->data;
 		if (*blank == FB_BLANK_UNBLANK) {
 			NVT_LOG("touch resume\n");
-#ifdef CONFIG_KERNEL_CUSTOM_FACTORY
-			if (!get_lct_tp_work_status()) {
-				suspend_state = false;
-				return 0;
-			}
-#endif
 			schedule_work(&g_resume_work);
 		}
 	}
